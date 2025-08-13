@@ -1,43 +1,81 @@
-// src/components/BackupPanel.tsx
+import { useRef } from "react";
 import { exportBackup, importBackup } from "../lib/backup";
 
 type Lang = "uk" | "en" | "cs";
 
-const L: Record<Lang, { save: string; restore: string; confirm: string }> = {
-  uk: { save: "Зберегти копію", restore: "Відновити", confirm: "Замінити поточні дані?" },
-  en: { save: "Save backup", restore: "Restore", confirm: "Replace current data?" },
-  cs: { save: "Uložit zálohu", restore: "Obnovit", confirm: "Nahradit aktuální data?" },
-};
+const UI = {
+  uk: {
+    save: "Зберегти копію",
+    restore: "Відновити",
+    confirm: "Це перезапише поточні дані. Продовжити?",
+    ok: "Готово",
+    fail: "Помилка імпорту:",
+  },
+  en: {
+    save: "Save backup",
+    restore: "Restore",
+    confirm: "This will overwrite current data. Continue?",
+    ok: "Done",
+    fail: "Import failed:",
+  },
+  cs: {
+    save: "Uložit zálohu",
+    restore: "Obnovit",
+    confirm: "Tím přepíšete současná data. Pokračovat?",
+    ok: "Hotovo",
+    fail: "Import se nezdařil:",
+  },
+} as const;
 
 export default function BackupPanel({ lang }: { lang: Lang }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const t = UI[lang] ?? UI.en;
+
+  const handleExport = () => {
+    exportBackup();
+  };
+
+  const handlePickAndImport = () => fileRef.current?.click();
+
   return (
     <div className="flex items-center gap-2">
       <button
+        type="button"
         className="rounded-xl border px-3 py-1 text-sm hover:bg-slate-50"
-        onClick={() => exportBackup()}
+        onClick={handleExport}
+        title={t.save}
       >
-        {L[lang].save}
+        {t.save}
       </button>
 
-      <label className="rounded-xl border px-3 py-1 text-sm hover:bg-slate-50 cursor-pointer">
-        <input
-          type="file"
-          accept="application/json"
-          className="hidden"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            if (!confirm(L[lang].confirm)) return;
-            try {
-              await importBackup(file);
-              location.reload(); // чтобы подтянуть восстановленные данные
-            } catch (err) {
-              alert((err as Error).message || "Import failed");
-            }
-          }}
-        />
-        {L[lang].restore}
-      </label>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="application/json"
+        className="hidden"
+        onChange={async (e) => {
+          const f = e.currentTarget.files?.[0];
+          e.currentTarget.value = ""; // сброс чтобы можно было выбрать тот же файл снова
+          if (!f) return;
+          if (!window.confirm(t.confirm)) return;
+          try {
+            await importBackup(f);
+            alert(t.ok);
+            window.location.reload();
+          } catch (err: any) {
+            alert(`${t.fail} ${err?.message ?? err}`);
+          }
+        }}
+      />
+
+      <button
+        type="button"
+        className="rounded-xl border px-3 py-1 text-sm hover:bg-slate-50"
+        onClick={handlePickAndImport}
+        title={t.restore}
+      >
+        {t.restore}
+      </button>
     </div>
   );
 }
