@@ -587,7 +587,7 @@ export default function App() {
       return [...prev, { dateISO, points }];
     });
   }
-  function closeDay() { saveDay(todayISO(), netPoints); }
+  
 
   // tasks
   function toggleDone(id: string) { setTasks((p) => p.map((t) => (t.id === id ? { ...t, done: !t.done } : t))); }
