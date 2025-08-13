@@ -1,85 +1,101 @@
-import React, { useRef } from "react";
+// src/components/BackupPanel.tsx
+import { useRef } from "react";
 import { exportBackup, importBackup } from "../lib/backup";
 
 type Lang = "uk" | "en" | "cs";
 
-const L = {
+const L: Record<
+  Lang,
+  {
+    exportLabel: string;
+    importLabel: string;
+    exportTitle: string;
+    importTitle: string;
+    confirm: string;
+    done: string;
+    error: string;
+  }
+> = {
   uk: {
-    save: "Зберегти копію",
-    restore: "Відновити з файлу",
-    tipSave: "Скачає резервну копію ваших даних (.json)",
-    tipRestore:
-      "Завантажте .json-файл із резервною копією. Поточні дані буде замінено.",
-    confirm: "Відновити дані з файлу? Поточні дані буде замінено.",
-    ok: "Дані відновлено.",
+    exportLabel: "Зберегти копію",
+    importLabel: "Відновити",
+    exportTitle: "Завантажити резервну копію як файл",
+    importTitle: "Відновити дані з файлу",
+    confirm: "Відновити дані з файлу? Поточні дані будуть заміщені.",
+    done: "Готово! Дані відновлено.",
+    error: "Помилка: файл резервної копії недійсний.",
   },
   en: {
-    save: "Save backup",
-    restore: "Restore from file",
-    tipSave: "Download a backup of your data (.json)",
-    tipRestore:
-      "Upload a .json backup file. Your current data will be replaced.",
+    exportLabel: "Save backup",
+    importLabel: "Restore",
+    exportTitle: "Download a backup file",
+    importTitle: "Restore data from file",
     confirm: "Restore data from file? Current data will be replaced.",
-    ok: "Data restored.",
+    done: "Done! Data restored.",
+    error: "Error: invalid backup file.",
   },
   cs: {
-    save: "Uložit zálohu",
-    restore: "Obnovit ze souboru",
-    tipSave: "Stáhne zálohu vašich dat (.json)",
-    tipRestore:
-      "Nahrajte .json soubor se zálohou. Aktuální data budou přepsána.",
+    exportLabel: "Uložit zálohu",
+    importLabel: "Obnovit",
+    exportTitle: "Stáhnout zálohu jako soubor",
+    importTitle: "Obnovit data ze souboru",
     confirm: "Obnovit data ze souboru? Aktuální data budou přepsána.",
-    ok: "Data obnovena.",
+    done: "Hotovo! Data obnovena.",
+    error: "Chyba: neplatný soubor zálohy.",
   },
-} as const;
+};
 
-export default function BackupPanel({ lang }: { lang: Lang }) {
+export default function BackupPanel({ lang = "en" }: { lang?: Lang }) {
+  const t = L[lang] || L.en;
   const fileRef = useRef<HTMLInputElement>(null);
-  const t = L[lang];
 
-  function onExport() {
-    exportBackup(); // скачает файл
-  }
+  const handleExport = () => {
+    exportBackup();
+  };
 
-  async function onImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handlePick = () => {
+    fileRef.current?.click();
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = ""; // сбросить выбор (чтобы можно было выбрать тот же файл снова)
+    if (!f) return;
+
+    if (!confirm(t.confirm)) return;
     try {
-      if (!confirm(t.confirm)) return;
-      await importBackup(file);
-      alert(t.ok);
-      // перезагрузим страницу, чтобы всё применилось
+      await importBackup(f);
+      alert(t.done);
+      // перезагрузим, чтобы подхватить восстановленные данные
       location.reload();
-    } finally {
-      // очистим value, чтобы можно было выбрать тот же файл повторно
-      e.currentTarget.value = "";
+    } catch (err) {
+      alert(t.error);
+      console.error(err);
     }
-  }
+  };
 
   return (
     <div className="flex items-center gap-2">
       <button
         className="rounded-xl border px-3 py-1 text-sm hover:bg-slate-50"
-        title={t.tipSave}
-        onClick={onExport}
+        title={t.exportTitle}
+        onClick={handleExport}
       >
-        {t.save}
+        {t.exportLabel}
       </button>
-
       <button
         className="rounded-xl border px-3 py-1 text-sm hover:bg-slate-50"
-        title={t.tipRestore}
-        onClick={() => fileRef.current?.click()}
+        title={t.importTitle}
+        onClick={handlePick}
       >
-        {t.restore}
+        {t.importLabel}
       </button>
-
       <input
         ref={fileRef}
         type="file"
         accept="application/json"
-        hidden
-        onChange={onImport}
+        className="hidden"
+        onChange={handleImport}
       />
     </div>
   );
