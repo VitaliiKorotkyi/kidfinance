@@ -1,49 +1,66 @@
-// src/lib/backup.ts
+// Универсальная резервная копия всех ключей localStorage проекта (префикс "kf_")
 
-export type BackupFile = {
-  meta: { app: "kidfinance"; version: number; createdAt: string };
-  local: Record<string, string | null>;
+const PREFIX = "kf_";
+const FILE_PREFIX = "kidfinance-backup";
+
+type BackupFile = {
+  meta: {
+    app: "KidFinance";
+    version: 1;
+    createdAt: string; // ISO
+  };
+  values: Record<string, unknown>;
 };
 
-/** Собрать весь LocalStorage приложения в JSON-строку */
-export function makeBackup(): string {
-  const local: Record<string, string | null> = {};
+function collect(): BackupFile {
+  const values: Record<string, unknown> = {};
   for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i)!;
-    local[k] = localStorage.getItem(k);
+    const key = localStorage.key(i)!;
+    if (key.startsWith(PREFIX)) {
+      try {
+        const raw = localStorage.getItem(key);
+        values[key] = raw ? JSON.parse(raw) : null;
+      } catch {
+        // если это число/строка — кладём как есть
+        values[key] = localStorage.getItem(key);
+      }
+    }
   }
-  const payload: BackupFile = {
-    meta: { app: "kidfinance", version: 1, createdAt: new Date().toISOString() },
-    local,
+  return {
+    meta: { app: "KidFinance", version: 1, createdAt: new Date().toISOString() },
+    values,
   };
-  return JSON.stringify(payload, null, 2);
 }
 
-/** Скачать текст как файл */
-export function downloadText(filename: string, text: string) {
-  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
+export function exportBackup() {
+  const data = collect();
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: "application/json",
+  });
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
   const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
+  a.href = URL.createObjectURL(blob);
+  a.download = `${FILE_PREFIX}-${stamp}.json`;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  URL.revokeObjectURL(a.href);
 }
 
-/** Восстановить бэкап из файла. По умолчанию ОЧИЩАЕТ текущие данные. */
-export async function restoreBackup(file: File, opts: { merge?: boolean } = {}) {
-  const txt = await file.text();
-  let data: BackupFile;
-  try {
-    data = JSON.parse(txt);
-  } catch {
-    throw new Error("Invalid JSON");
+export async function importBackup(file: File) {
+  const text = await file.text();
+  const parsed = JSON.parse(text) as BackupFile;
+
+  if (!parsed?.meta?.app || parsed.meta.app !== "KidFinance") {
+    throw new Error("Invalid backup file");
   }
-  if (data?.meta?.app !== "kidfinance") {
-    console.warn("Unknown backup source; importing anyway");
-  }
-  if (!opts.merge) localStorage.clear();
-  for (const [k, v] of Object.entries(data.local || {})) {
-    if (typeof v === "string") localStorage.setItem(k, v);
-  }
+
+  // применяем значения
+  Object.entries(parsed.values).forEach(([k, v]) => {
+    try {
+      localStorage.setItem(k, JSON.stringify(v));
+    } catch {
+      localStorage.setItem(k, String(v));
+    }
+  });
 }

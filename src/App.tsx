@@ -650,29 +650,36 @@ export default function App() {
   const todayStr = new Intl.DateTimeFormat(lang === "uk" ? "uk-UA" : lang === "cs" ? "cs-CZ" : "en-US", { weekday: "long", day: "2-digit", month: "long" }).format(new Date());
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-white to-slate-50">
-      <header className="sticky top-0 z-10 backdrop-blur bg-white/70 border-b">
+   <header className="sticky top-0 z-10 backdrop-blur bg-white/70 border-b">
   <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 justify-between">
     <div className="flex items-center gap-3">
       <div className="font-semibold tracking-tight text-xl">KidFinance</div>
-      <select className="rounded-xl border px-2 py-1 text-sm" value={lang} onChange={(e) => setLang(e.target.value as Lang)}>
-        <option value="uk">UK</option><option value="en">EN</option><option value="cs">CS</option>
+
+      <select
+        className="rounded-xl border px-2 py-1 text-sm"
+        value={lang}
+        onChange={(e) => setLang(e.target.value as Lang)}
+      >
+        <option value="uk">UK</option>
+        <option value="en">EN</option>
+        <option value="cs">CS</option>
       </select>
+
       <button
         className="rounded-xl border px-3 py-1 text-sm hover:bg-slate-50"
         onClick={() => setHelpOpen(true)}
       >
-        {t(lang,'help')}
+        {t(lang, "help")}
       </button>
+
+      {/* ✨ панель резервного копирования */}
+      <BackupPanel lang={lang} />
     </div>
 
-    {/* вот сюда добавляем панель бэкапа */}
-    <div className="flex items-center gap-3">
-      <BackupPanel />
-      <div className="text-sm text-slate-600">{todayStr}</div>
-    </div>
+    <div className="text-sm text-slate-600">{todayStr}</div>
   </div>
 </header>
+
 
       <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Profile */}
