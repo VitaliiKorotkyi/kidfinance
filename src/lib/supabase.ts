@@ -1,18 +1,15 @@
 // src/lib/supabase.ts
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const url = import.meta.env.VITE_SUPABASE_URL as string;
-const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-if (!url || !anon) {
-  // Поможет быстро понять, если ENV не подхватились
-  console.error("Supabase env is missing:", { url, hasAnon: !!anon });
+let client: SupabaseClient | null = null;
+if (url && anon) {
+  client = createClient(url, anon, { auth: { persistSession: true, autoRefreshToken: true } });
+} else {
+  // Не падаем – просто лог
+  console.warn("[supabase] ENV vars missing. Cloud sync/auth is disabled.");
 }
 
-export const supabase = createClient(url, anon, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  },
-});
+export const supabase = client;
